@@ -517,7 +517,22 @@ function updateUI() {
                 subText = 'Success Rate';
                 progressVal = stats.percentage; // Keep normal progress for ring
                 
-                messageText = 'Maintain 98%+ to fill the circle';
+                const lapsePercentage = Math.floor(((stats.successfulDaysCount - 1) / stats.totalDays) * 100);
+                const todayStrSRP = getTodayString();
+                const hasLapsedTodaySRP = appState.lapses.includes(todayStrSRP);
+                messageText = 'Maintain 98%+ to fill the circle.';
+                if (!hasLapsedTodaySRP) {
+                    messageText += ` Relapsing today would drop you to <span class="highlight">${lapsePercentage}%</span>.`;
+                    // Only show recovery days if lapse would drop below 98%
+                    if (lapsePercentage < 98) {
+                        // Calculate days needed to recover back to 98% after a lapse today
+                        const targetDecimal = 0.98;
+                        const newTotal = stats.totalDays;
+                        const newSuccessful = stats.successfulDaysCount - 1;
+                        const daysToRecover = Math.ceil(((targetDecimal * newTotal) - newSuccessful) / (1 - targetDecimal));
+                        messageText += ` It would take <span class="highlight">${daysToRecover}</span> days to recover 98% and start filling the circle again!`;
+                    }
+                }
 
                 // Write to DOM before returning
                 mainStat.textContent = mainText;
@@ -657,9 +672,10 @@ function updateUI() {
                     let baseMessage = `Abstain for <span class="highlight">${neededSuccesses}</span> more days to reach <span class="highlight">${targetPercent}%</span>!`;
                     
                     if (!hasLapsedToday) {
-                        // Calculate what happens if they lapse today
-                        const newTotal = stats.totalDays + 1;
-                        const newSuccessful = stats.successfulDaysCount;
+                        // Calculate what happens if they lapse today:
+                        // total days stays the same, but one fewer successful day
+                        const newTotal = stats.totalDays;
+                        const newSuccessful = stats.successfulDaysCount - 1;
                         const newNeeded = Math.ceil(((targetDecimal * newTotal) - newSuccessful) / (1 - targetDecimal));
                         const extraDays = newNeeded - neededSuccesses;
                         
