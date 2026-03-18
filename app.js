@@ -957,11 +957,11 @@ function bindEvents() {
     addLapseBtn.addEventListener('click', () => {
         const val = addLapseDateInput.value;
         if (val) {
-            if (new Date(val) > new Date()) {
+            if (val > getTodayString()) {
                 showToast("Can't log lapses in the future.", 4000);
                 return;
             }
-            if (new Date(val) < new Date(appState.startDate)) {
+            if (val < appState.startDate) {
                 showToast("Can't log lapses before start date.", 4000);
                 return;
             }
