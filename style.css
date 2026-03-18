@@ -12,9 +12,9 @@
     --danger-color: #ef4444;
     --danger-hover: #dc2626;
     --success-color: #10b981;
-    --trend-improving: #3b82f6; /* Electric blue */
-    --trend-stable: #10b981; /* Green */
-    --trend-declining: #ef4444; /* Red */
+    --trend-improving: #3b82f6;
+    --trend-stable: #10b981;
+    --trend-declining: #ef4444;
     
     --ring-bg: #21262d;
     
@@ -119,12 +119,10 @@ h1 {
     font-size: 1.5rem;
     font-weight: 800;
     letter-spacing: -0.5px;
-    background: linear-gradient(90deg, #00cfff, #bf00ff, #00cfff, #bf00ff);
-    background-size: 300% 100%;
+    background: var(--primary-gradient);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    animation: gradient-slide 4s linear infinite;
 }
 
 .version-badge {
@@ -278,11 +276,9 @@ main {
 }
 
 .btn-primary {
-    background: linear-gradient(90deg, #00cfff, #bf00ff, #00cfff, #bf00ff);
-    background-size: 300% 100%;
+    background: var(--primary-gradient);
     color: white;
     box-shadow: var(--shadow-glow);
-    animation: gradient-slide 4s linear infinite;
 }
 
 .btn-primary:hover {

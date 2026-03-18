@@ -591,19 +591,18 @@ function updateUI() {
                     const st1 = ringGrad.querySelector('stop:nth-child(1)');
                     const st2 = ringGrad.querySelector('stop:nth-child(2)');
                     
-                    // Keep electric color scheme based on percentage
                     if (progressVal >= 90) {
-                        st1.setAttribute('stop-color', '#00cfff');
-                        st2.setAttribute('stop-color', '#bf00ff');
+                        st1.setAttribute('stop-color', '#3b82f6');
+                        st2.setAttribute('stop-color', '#8b5cf6');
                     } else if (progressVal >= 75) {
-                        st1.setAttribute('stop-color', '#00cfff');
-                        st2.setAttribute('stop-color', '#7c3aed');
+                        st1.setAttribute('stop-color', '#3b82f6');
+                        st2.setAttribute('stop-color', '#6366f1');
                     } else if (progressVal >= 50) {
-                        st1.setAttribute('stop-color', '#00e5ff');
-                        st2.setAttribute('stop-color', '#00cfff');
+                        st1.setAttribute('stop-color', '#06b6d4');
+                        st2.setAttribute('stop-color', '#3b82f6');
                     } else {
-                        st1.setAttribute('stop-color', '#00ff9f');
-                        st2.setAttribute('stop-color', '#00e5ff');
+                        st1.setAttribute('stop-color', '#10b981');
+                        st2.setAttribute('stop-color', '#06b6d4');
                     }
                 }, 50);
                 
@@ -748,21 +747,17 @@ function updateUI() {
             const st2 = ringGrad.querySelector('stop:nth-child(2)');
             
             if (progressVal >= 90) {
-                // Electric blue to purple for 90%+
-                st1.setAttribute('stop-color', '#00cfff');
-                st2.setAttribute('stop-color', '#bf00ff');
+                st1.setAttribute('stop-color', '#3b82f6');
+                st2.setAttribute('stop-color', '#8b5cf6');
             } else if (progressVal >= 75) {
-                // Electric blue to violet for 75-89%
-                st1.setAttribute('stop-color', '#00cfff');
-                st2.setAttribute('stop-color', '#7c3aed');
+                st1.setAttribute('stop-color', '#3b82f6');
+                st2.setAttribute('stop-color', '#6366f1');
             } else if (progressVal >= 50) {
-                // Cyan to electric blue for 50-74%
-                st1.setAttribute('stop-color', '#00e5ff');
-                st2.setAttribute('stop-color', '#00cfff');
+                st1.setAttribute('stop-color', '#06b6d4');
+                st2.setAttribute('stop-color', '#3b82f6');
             } else {
-                // Green to cyan for <50%
-                st1.setAttribute('stop-color', '#00ff9f');
-                st2.setAttribute('stop-color', '#00e5ff');
+                st1.setAttribute('stop-color', '#10b981');
+                st2.setAttribute('stop-color', '#06b6d4');
             }
         }, 50);
         console.log('=== UPDATEUI END ===');
