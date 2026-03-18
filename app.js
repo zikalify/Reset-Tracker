@@ -3,6 +3,8 @@ const mainStat = document.getElementById('main-stat');
 const subStat = document.getElementById('sub-stat');
 const statusMessage = document.getElementById('status-message');
 const progressRingCircle = document.getElementById('progress-ring-circle');
+const waveFill = document.getElementById('wave-fill');
+const wavePath = document.getElementById('wave-path');
 const lapseBtn = document.getElementById('lapse-btn');
 const settingsBtn = document.getElementById('settings-btn');
 const settingsModal = document.getElementById('settings-modal');
@@ -35,6 +37,48 @@ progressRingCircle.style.strokeDashoffset = circumference;
 function setProgress(percent) {
     const offset = circumference - percent / 100 * circumference;
     progressRingCircle.style.strokeDashoffset = offset;
+}
+
+function setWaveFill(percent) {
+    // Hide wave fill when not in stable recovery progress
+    if (percent <= 0) {
+        waveFill.style.display = 'none';
+        return;
+    }
+    
+    waveFill.style.display = 'block';
+    
+    // Calculate fill height (0% = bottom, 100% = top)
+    // Use radius 104 to stay within the circle bounds (120 - 16 for stroke width)
+    const circleRadius = 104;
+    const circleCenterY = 140;
+    const fillHeight = (percent / 100) * (circleRadius * 2);
+    const waveY = circleCenterY + circleRadius - fillHeight;
+    
+    // Generate wavy path
+    const amplitude = 6; // Slightly smaller wave height
+    const frequency = 0.02; // Wave frequency
+    const points = [];
+    
+    // Start from bottom left corner of clipped area (with some padding)
+    const leftX = 36; // 140 - 104
+    const rightX = 244; // 140 + 104
+    const bottomY = circleCenterY + circleRadius;
+    
+    points.push(`M ${leftX} ${bottomY}`);
+    
+    // Draw wavy line
+    for (let x = leftX; x <= rightX; x += 2) {
+        const y = waveY + Math.sin((x * frequency) + (Date.now() * 0.001)) * amplitude;
+        points.push(`L ${x} ${y}`);
+    }
+    
+    // Complete the path to fill the area
+    points.push(`L ${rightX} ${bottomY}`);
+    points.push(`L ${leftX} ${bottomY}`);
+    points.push('Z');
+    
+    wavePath.setAttribute('d', points.join(' '));
 }
 
 function showToast(message, duration = 3000) {
@@ -101,6 +145,13 @@ function loadData() {
                 ninetyEightPercentDate: null
             };
         }
+    } else {
+        // Initialize with default state if no saved data
+        appState = {
+            startDate: null,
+            lapses: [],
+            ninetyEightPercentDate: null
+        };
     }
 }
 
@@ -126,7 +177,7 @@ function calculateStats() {
     }
     
     // Calculate total days elapsed (inclusive of start date)
-    const totalDays = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
+    const totalDays = Math.max(1, Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1);
     
     // Ensure we have valid days
     if (totalDays <= 0) {
@@ -195,6 +246,21 @@ function checkStableRecovery(stats) {
 
     const daysSince = Math.floor((today - sinceDate) / (1000 * 60 * 60 * 24));
     return daysSince >= 180;
+}
+
+function calculateStableRecoveryProgress(stats) {
+    // Calculate progress towards 6-month stable recovery (0-100%)
+    if (stats.percentage < 98 || !appState.ninetyEightPercentDate) {
+        return 0;
+    }
+
+    const today = new Date();
+    const sinceDate = new Date(appState.ninetyEightPercentDate);
+    if (isNaN(sinceDate.getTime())) return 0;
+
+    const daysSince = Math.floor((today - sinceDate) / (1000 * 60 * 60 * 24));
+    const progress = Math.min((daysSince / 180) * 100, 100);
+    return progress;
 }
 
 function calculateRecoveryDuration() {
@@ -367,15 +433,19 @@ function updateUI() {
         let messageText = '';
         let progressVal = 100;
         
-        if (stats.totalDays === 1) {
+        if (stats.totalDays <= 1) {
             console.log('>>> ENTERED DAY 1 BRANCH');
-            mainText = 'Day 1';
-            subText = stats.successfulDaysCount === 1 ? 'So far, so good.' : 'Lapsed today.';
-            progressVal = stats.successfulDaysCount === 1 ? 100 : 0;
-            messageText = 'Every journey begins with a single step.';
+            mainText = `${Math.floor(stats.percentage)}%`;
+            subText = 'Success Rate';
+            progressVal = stats.percentage;
+            let day1Message = 'Every journey begins with a single step.';
+            if (stats.successfulDaysCount >= 1) {
+                day1Message += ` <span style="color: var(--text-muted); font-size: 0.95em;">Relapsing today would reset you to 0%.</span>`;
+            }
+            messageText = day1Message;
         } else {
             console.log('>>> ENTERED PERCENTAGE BRANCH');
-            mainText = `${Math.round(stats.percentage)}%`;
+            mainText = `${Math.floor(stats.percentage)}%`;
             subText = 'Success Rate';
             progressVal = stats.percentage;
             
@@ -384,23 +454,25 @@ function updateUI() {
             
             // Check for stable recovery (6+ months at 98%+)
             const hasStableRecovery = checkStableRecovery(stats);
+            const stableRecoveryProgress = calculateStableRecoveryProgress(stats);
+            const isInStableRecoveryProgress = stats.percentage >= 98 && appState.ninetyEightPercentDate && !hasStableRecovery;
             
             if (hasStableRecovery) {
                 // Apply bright theme and show stable recovery message
                 applyBrightTheme();
                 
-                mainText = `${Math.round(stats.percentage)}%`;
+                mainText = `${Math.floor(stats.percentage)}%`;
                 subText = 'Stable Recovery';
                 progressVal = stats.percentage;
                 
                 // Format dates for message
                 const startDate = new Date(appState.startDate);
-                const startDateFormatted = startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                const startDateFormatted = startDate.toLocaleDateString();
                 
                 let ninetyEightDateFormatted = '';
                 if (appState.ninetyEightPercentDate) {
                     const ninetyEightDate = new Date(appState.ninetyEightPercentDate);
-                    ninetyEightDateFormatted = ninetyEightDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                    ninetyEightDateFormatted = ninetyEightDate.toLocaleDateString();
                 } else {
                     ninetyEightDateFormatted = startDateFormatted;
                 }
@@ -414,7 +486,7 @@ function updateUI() {
                         You have maintained a <span style="color: #0891b2; font-weight: 600;">98%+</span> score since <span style="color: #0891b2; font-weight: 600;">${ninetyEightDateFormatted}</span>.<br>
                         You've been on this journey since <span style="color: #0891b2; font-weight: 600;">${startDateFormatted}</span>.<br>
                         <span style="color: #0e7490; font-weight: 600;">${journeyDuration}</span> of consistent progress.<br><br>
-                        <span style="color: #155e75; font-style: italic;">Congratulations! Your dedication has created lasting change.</span>
+                        <span style="color: #155e75; font-style: italic;">Congratulations! Your dedication has created lasting change. Future relapses could lead to a loss of Stable Recovery status.</span>
                     </div>
                 `;
                 
@@ -427,6 +499,7 @@ function updateUI() {
                 // Update progress ring to bright cyan-green gradient for stable recovery
                 setTimeout(() => {
                     setProgress(progressVal);
+                    setWaveFill(0); // Hide wave fill for stable recovery
                     const ringGrad = document.getElementById('ring-gradient');
                     const st1 = ringGrad.querySelector('stop:nth-child(1)');
                     const st2 = ringGrad.querySelector('stop:nth-child(2)');
@@ -436,14 +509,69 @@ function updateUI() {
 
                 console.log('=== UPDATEUI END (stable recovery) ===');
                 return;
+            } else if (isInStableRecoveryProgress) {
+                // Show yellow gradient wave filling towards stable recovery
+                removeBrightTheme();
+                
+                mainText = `${Math.floor(stats.percentage)}%`;
+                subText = 'Success Rate';
+                progressVal = stats.percentage; // Keep normal progress for ring
+                
+                messageText = 'Maintain 98%+ to fill the circle';
+
+                // Write to DOM before returning
+                mainStat.textContent = mainText;
+                subStat.textContent = subText;
+                statusMessage.innerHTML = messageText;
+                
+                // Update progress ring normally and show wave fill
+                setTimeout(() => {
+                    setProgress(progressVal);
+                    setWaveFill(stableRecoveryProgress); // Set wave fill based on stable recovery progress
+                    
+                    const ringGrad = document.getElementById('ring-gradient');
+                    const st1 = ringGrad.querySelector('stop:nth-child(1)');
+                    const st2 = ringGrad.querySelector('stop:nth-child(2)');
+                    
+                    // Keep normal color scheme based on percentage
+                    if (progressVal >= 90) {
+                        st1.setAttribute('stop-color', '#3b82f6');
+                        st2.setAttribute('stop-color', '#8b5cf6');
+                    } else if (progressVal >= 75) {
+                        st1.setAttribute('stop-color', '#3b82f6');
+                        st2.setAttribute('stop-color', '#6366f1');
+                    } else if (progressVal >= 50) {
+                        st1.setAttribute('stop-color', '#06b6d4');
+                        st2.setAttribute('stop-color', '#3b82f6');
+                    } else {
+                        st1.setAttribute('stop-color', '#10b981');
+                        st2.setAttribute('stop-color', '#06b6d4');
+                    }
+                }, 50);
+                
+                console.log('=== UPDATEUI END (stable recovery progress) ===');
+                return;
             } else {
                 // Remove bright theme if not in stable recovery
                 removeBrightTheme();
             }
             
             if (stats.percentage >= 100) {
-                // Perfect record - never lapsed
-                messageText = 'Perfect record! Keep going!';
+                // Perfect record — calculate cost of lapsing today
+                const todayStr100 = new Date().toISOString().split('T')[0];
+                const hasLapsedToday100 = appState.lapses.includes(todayStr100);
+                if (!hasLapsedToday100) {
+                    // After a lapse: (totalDays successful, totalDays+1 total)
+                    // New percentage = totalDays / (totalDays + 1)
+                    // Days to get back to 99%: need x clean days so that
+                    // (totalDays + x) / (totalDays + 1 + x) >= 0.99
+                    const t = stats.totalDays;
+                    const targetDecimal = 0.99;
+                    const neededBack = Math.ceil(((targetDecimal * (t + 1)) - t) / (1 - targetDecimal));
+                    messageText = `Perfect record! Keep going! Relapsing today would require <span class="highlight">${neededBack}</span> more clean days to reach 99%.`;
+                } else {
+                    messageText = 'Perfect record! Keep going!';
+                }
             } else if (stats.percentage >= 99) {
                 // 100% is impossible to regain once lost, so no goal needed
                 messageText = 'Keep going!';
@@ -517,7 +645,7 @@ function updateUI() {
                 if (targetPercent === 99 && appState.ninetyEightPercentDate) {
                     const achievementDate = new Date(appState.ninetyEightPercentDate);
                     const offsetDate = new Date(achievementDate.getTime() + achievementDate.getTimezoneOffset() * 60000);
-                    const formattedDate = offsetDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                    const formattedDate = offsetDate.toLocaleDateString();
                     messageText = `<div style="text-align: center;">🎯 98% achieved on ${formattedDate}. Keep going to reach stable recovery!</div>`;
                 }
 
@@ -536,7 +664,7 @@ function updateUI() {
                         const extraDays = newNeeded - neededSuccesses;
                         
                         if (extraDays > 0) {
-                            baseMessage += ` Relapsing today would add <span class="highlight">${extraDays}</span> more days to your ${targetPercent}% goal.`;
+                            baseMessage += ` Relapsing today would add <span class="highlight">${extraDays}</span> days to reach <span class="highlight">${targetPercent}%</span>.`;
                         }
                     }
                     
@@ -553,6 +681,7 @@ function updateUI() {
         // Avoid animation glitches by setting timeout minimally
         setTimeout(() => {
             setProgress(progressVal);
+            setWaveFill(0); // Hide wave fill for normal operation
             
             // Change color based on percentage
             const ringGrad = document.getElementById('ring-gradient');
@@ -611,7 +740,7 @@ function addLapse(dateStr) {
         // Format date for toast message
         const dateObj = new Date(dateStr);
         const offsetDate = new Date(dateObj.getTime() + dateObj.getTimezoneOffset() * 60000);
-        const formatStr = offsetDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        const formatStr = offsetDate.toLocaleDateString();
         showToast(`Lapse logged for ${formatStr}`);
     }
 }
@@ -639,7 +768,7 @@ function renderLapsesList() {
         const dateObj = new Date(dateStr);
         // Add offset to avoid timezone date shifts causing generic string display issues
         const offsetDate = new Date(dateObj.getTime() + dateObj.getTimezoneOffset() * 60000);
-        const formatStr = offsetDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        const formatStr = offsetDate.toLocaleDateString();
         
         li.innerHTML = `
             <span class="lapse-date">${formatStr}</span>
@@ -717,7 +846,10 @@ function bindEvents() {
     lapsesList.addEventListener('click', (e) => {
         if (e.target.classList.contains('btn-remove')) {
             const dateStr = e.target.getAttribute('data-date');
-            if (confirm(`Remove lapse for ${dateStr}?`)) {
+            const dateObj = new Date(dateStr);
+            const offsetDate = new Date(dateObj.getTime() + dateObj.getTimezoneOffset() * 60000);
+            const formattedDate = offsetDate.toLocaleDateString();
+            if (confirm(`Remove lapse for ${formattedDate}?`)) {
                 removeLapse(dateStr);
             }
         }

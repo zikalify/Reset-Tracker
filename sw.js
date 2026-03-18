@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nofap-tracker-v6';
+const CACHE_NAME = 'nofap-tracker-v7';
 const ASSETS = [
     './',
     './index.html',
