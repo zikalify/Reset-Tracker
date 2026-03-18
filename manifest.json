@@ -1,0 +1,17 @@
+{
+    "name": "NoFap Tracker",
+    "short_name": "NoFap Tracker",
+    "description": "Track your journey and streak visually.",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#0d1117",
+    "theme_color": "#0d1117",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "./icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}
