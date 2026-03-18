@@ -39,46 +39,68 @@ function setProgress(percent) {
     progressRingCircle.style.strokeDashoffset = offset;
 }
 
-function setWaveFill(percent) {
-    // Hide wave fill when not in stable recovery progress
-    if (percent <= 0) {
-        waveFill.style.display = 'none';
-        return;
-    }
-    
-    waveFill.style.display = 'block';
-    
-    // Calculate fill height (0% = bottom, 100% = top)
-    // Use radius 104 to stay within the circle bounds (120 - 16 for stroke width)
+// Wave animation state
+let waveAnimationId = null;
+let waveTargetPercent = 0;
+
+function drawWaveFrame(percent, timestamp) {
     const circleRadius = 104;
     const circleCenterY = 140;
     const fillHeight = (percent / 100) * (circleRadius * 2);
     const waveY = circleCenterY + circleRadius - fillHeight;
-    
-    // Generate wavy path
-    const amplitude = 6; // Slightly smaller wave height
-    const frequency = 0.02; // Wave frequency
+
+    const amplitude = 5;
+    const frequency = 0.022;
+    const speed = 0.0018;
     const points = [];
-    
-    // Start from bottom left corner of clipped area (with some padding)
-    const leftX = 36; // 140 - 104
-    const rightX = 244; // 140 + 104
+
+    const leftX = 36;
+    const rightX = 244;
     const bottomY = circleCenterY + circleRadius;
-    
+
     points.push(`M ${leftX} ${bottomY}`);
-    
-    // Draw wavy line
+
     for (let x = leftX; x <= rightX; x += 2) {
-        const y = waveY + Math.sin((x * frequency) + (Date.now() * 0.001)) * amplitude;
+        const y = waveY + Math.sin((x * frequency) + (timestamp * speed)) * amplitude
+                       + Math.sin((x * frequency * 0.7) + (timestamp * speed * 1.3) + 1) * (amplitude * 0.4);
         points.push(`L ${x} ${y}`);
     }
-    
-    // Complete the path to fill the area
+
     points.push(`L ${rightX} ${bottomY}`);
     points.push(`L ${leftX} ${bottomY}`);
     points.push('Z');
-    
+
     wavePath.setAttribute('d', points.join(' '));
+}
+
+function waveAnimationLoop(timestamp) {
+    if (waveTargetPercent <= 0) {
+        waveFill.style.display = 'none';
+        waveAnimationId = null;
+        return;
+    }
+    drawWaveFrame(waveTargetPercent, timestamp);
+    waveAnimationId = requestAnimationFrame(waveAnimationLoop);
+}
+
+function setWaveFill(percent) {
+    waveTargetPercent = percent;
+
+    if (percent <= 0) {
+        waveFill.style.display = 'none';
+        if (waveAnimationId) {
+            cancelAnimationFrame(waveAnimationId);
+            waveAnimationId = null;
+        }
+        return;
+    }
+
+    waveFill.style.display = 'block';
+
+    // Start loop only if not already running
+    if (!waveAnimationId) {
+        waveAnimationId = requestAnimationFrame(waveAnimationLoop);
+    }
 }
 
 function showToast(message, duration = 3000) {
