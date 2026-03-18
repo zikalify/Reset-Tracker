@@ -31,6 +31,41 @@
     --font-body: 'Inter', sans-serif;
 }
 
+/* Bright Theme for Stable Recovery */
+.bright-theme {
+    --bg-color: #f8fafc;
+    --surface-color: #ffffff;
+    --surface-hover: #f1f5f9;
+    --surface-border: rgba(0, 0, 0, 0.1);
+    --text-primary: #1e293b;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    
+    --primary-color: #06b6d4;
+    --primary-gradient: linear-gradient(135deg, #06b6d4 0%, #10b981 100%);
+    --danger-color: #ef4444;
+    --danger-hover: #dc2626;
+    --success-color: #10b981;
+    --trend-improving: #06b6d4; /* Cyan */
+    --trend-stable: #10b981; /* Green */
+    --trend-declining: #ef4444; /* Red */
+    
+    --ring-bg: #e2e8f0;
+    
+    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-glow: 0 0 20px rgba(6, 182, 212, 0.3);
+}
+
+.bright-theme .modal {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.bright-theme .toast {
+    background: var(--surface-color);
+    border: 1px solid var(--surface-border);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -44,10 +79,8 @@ body {
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
-    /* Prevent pull-to-refresh and bounce scrolling */
+    /* Prevent pull-to-refresh on mobile if possible */
     overscroll-behavior-y: none;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y pinch-zoom;
 }
 
 .material-symbols-rounded {
@@ -61,15 +94,10 @@ body {
 .app-container {
     max-width: 600px;
     margin: 0 auto;
-    height: 100vh;
-    height: 100dvh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     padding: 20px;
-    overflow: hidden;
-    overscroll-behavior: none;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y pinch-zoom;
 }
 
 /* Header */
@@ -131,11 +159,7 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 20px;
-    padding: 10px 0;
-    max-height: 100vh;
-    max-height: 100dvh; /* Dynamic viewport for Android */
-    overflow: hidden;
+    gap: 40px;
 }
 
 .stats-card {
@@ -147,72 +171,6 @@ main {
     width: 100%;
     gap: 12px;
     flex-shrink: 0;
-}
-
-.weekly-trend {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: var(--surface-color);
-    border-radius: var(--radius-full);
-    border: 1px solid var(--surface-border);
-    font-size: 0.9rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.weekly-trend.clickable:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
-}
-
-.resiliency-in-pill {
-    color: var(--text-secondary);
-    margin-right: 4px;
-}
-
-.trend-arrow {
-    font-size: 1.2rem;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    vertical-align: -0.25em;
-    margin-top: 2px;
-}
-
-.trend-text {
-    color: var(--text-secondary);
-}
-
-.weekly-trend.improving {
-    border-color: var(--trend-improving);
-    background: rgba(59, 130, 246, 0.1);
-}
-
-.weekly-trend.improving .trend-arrow {
-    color: var(--trend-improving);
-}
-
-.weekly-trend.stable {
-    border-color: var(--trend-stable);
-    background: rgba(16, 185, 129, 0.1);
-}
-
-.weekly-trend.stable .trend-arrow {
-    color: var(--trend-stable);
-}
-
-.weekly-trend.declining {
-    border-color: var(--trend-declining);
-    background: rgba(239, 68, 68, 0.1);
-}
-
-.weekly-trend.declining .trend-arrow {
-    color: var(--trend-declining);
 }
 
 .progress-ring-container {
@@ -490,8 +448,30 @@ label {
 }
 
 /* Date input specific styles for better dark mode support */
-::-webkit-calendar-picker-indicator {
-    filter: invert(1);
+input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: invert(0.5);
+}
+
+input[type="date"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+input[type="date"]::-webkit-datetime-edit-text {
+    color: var(--text-primary);
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field {
+    color: var(--text-primary);
+}
+
+input[type="date"]::-webkit-datetime-edit-day-field {
+    color: var(--text-primary);
+}
+
+input[type="date"]::-webkit-datetime-edit-year-field {
+    color: var(--text-primary);
 }
 
 .add-lapse-group {
@@ -580,169 +560,16 @@ label {
     transform: translateX(-50%) translateY(0);
 }
 
-/* Responsive constraints */
-@media (max-height: 700px) {
-    .progress-ring-container {
-        transform: scale(0.85);
-    }
+/* Strong Recovery Animations */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
 }
 
-/* Extra small screens - feature phones */
-@media (max-width: 320px) {
-    main {
-        gap: 10px;
-        padding: 5px 0;
-    }
-    
-    .progress-ring-container {
-        width: 180px;
-        height: 180px;
-    }
-    
-    .progress-ring {
-        width: 180px;
-        height: 180px;
-    }
-    
-    .progress-ring__bg,
-    .progress-ring__circle {
-        r: 75;
-        cx: 90;
-        cy: 90;
-    }
-    
-    .main-stat {
-        font-size: 2rem;
-    }
-    
-    .sub-stat {
-        font-size: 0.8rem;
-    }
-    
-    .weekly-trend {
-        font-size: 0.7rem;
-        padding: 4px 8px;
-    }
-    
-    .resiliency-in-pill {
-        font-size: 0.7rem;
-    }
-}
-
-/* Standard mobile */
-@media (max-width: 400px), (max-height: 600px) {
-    main {
-        gap: 15px;
-        padding: 5px 0;
-    }
-    
-    .progress-ring-container {
-        width: 220px;
-        height: 220px;
-        transform: scale(1);
-    }
-    
-    .progress-ring {
-        width: 220px;
-        height: 220px;
-    }
-    
-    .progress-ring__bg,
-    .progress-ring__circle {
-        r: 95;
-        cx: 110;
-        cy: 110;
-    }
-    
-    .stats-center {
-        text-align: center;
-    }
-    
-    .main-stat {
-        font-size: 2.5rem;
-    }
-    
-    .sub-stat {
-        font-size: 0.9rem;
-    }
-    
-    .weekly-trend {
-        font-size: 0.8rem;
-        padding: 6px 12px;
-    }
-    
-    .message-container {
-        margin: 0 10px;
-    }
-    
-    .status-message {
-        font-size: 0.9rem;
-    }
-}
-
-/* Landscape orientation */
-@media (orientation: landscape) and (max-height: 500px) {
-    main {
-        gap: 8px;
-        padding: 2px 0;
-    }
-    
-    .progress-ring-container {
-        width: 160px;
-        height: 160px;
-    }
-    
-    .progress-ring {
-        width: 160px;
-        height: 160px;
-    }
-    
-    .progress-ring__bg,
-    .progress-ring__circle {
-        r: 65;
-        cx: 80;
-        cy: 80;
-    }
-    
-    .main-stat {
-        font-size: 1.8rem;
-    }
-    
-    .sub-stat {
-        font-size: 0.7rem;
-    }
-    
-    .weekly-trend {
-        font-size: 0.7rem;
-        padding: 4px 8px;
-    }
-    
-    .status-message {
-        font-size: 0.8rem;
-    }
-    
-    .actions {
-        margin-top: 10px;
-    }
-}
-
-/* iOS Safari safe area support */
-@supports (padding: max(0px)) {
-    .app-container {
-        padding-left: max(10px, env(safe-area-inset-left));
-        padding-right: max(10px, env(safe-area-inset-right));
-        padding-bottom: max(10px, env(safe-area-inset-bottom));
-    }
-}
-
-/* Very tall screens - tablets in portrait */
-@media (min-height: 1200px) {
-    main {
-        gap: 30px;
-        padding: 20px 0;
-    }
-    
-    .progress-ring-container {
-        transform: scale(1.1);
-    }
+@keyframes celebrate {
+    0% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.02) rotate(1deg); }
+    50% { transform: scale(1.05) rotate(-1deg); }
+    75% { transform: scale(1.02) rotate(1deg); }
+    100% { transform: scale(1) rotate(0deg); }
 }

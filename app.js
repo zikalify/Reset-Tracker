@@ -3,9 +3,6 @@ const mainStat = document.getElementById('main-stat');
 const subStat = document.getElementById('sub-stat');
 const statusMessage = document.getElementById('status-message');
 const progressRingCircle = document.getElementById('progress-ring-circle');
-const weeklyTrend = document.getElementById('weekly-trend');
-const trendArrow = document.getElementById('trend-arrow');
-const trendText = document.getElementById('trend-text');
 const lapseBtn = document.getElementById('lapse-btn');
 const settingsBtn = document.getElementById('settings-btn');
 const settingsModal = document.getElementById('settings-modal');
@@ -18,14 +15,13 @@ const hardResetBtn = document.getElementById('hard-reset-btn');
 const exportDataBtn = document.getElementById('export-data-btn');
 const importDataBtn = document.getElementById('import-data-btn');
 const importDataFile = document.getElementById('import-data-file');
-const resiliencyModal = document.getElementById('resiliency-modal');
-const closeResiliencyBtn = document.getElementById('close-resiliency-btn');
 const toast = document.getElementById('toast');
 
 // State
 let appState = {
     startDate: null,
-    lapses: [] // Array of 'YYYY-MM-DD' strings
+    lapses: [], // Array of 'YYYY-MM-DD' strings
+    ninetyEightPercentDate: null // Date when 98% was first achieved or re-achieved
 };
 
 // SVG Circle properties
@@ -57,6 +53,14 @@ function getTodayString() {
     return localDate.toISOString().split('T')[0];
 }
 
+function applyBrightTheme() {
+    document.body.classList.add('bright-theme');
+}
+
+function removeBrightTheme() {
+    document.body.classList.remove('bright-theme');
+}
+
 // Logic & Data
 function init() {
     loadData();
@@ -80,9 +84,22 @@ function loadData() {
     const saved = localStorage.getItem('nofap_tracker_state');
     if (saved) {
         try {
-            appState = JSON.parse(saved);
+            const parsedState = JSON.parse(saved);
+            // Merge with default state to ensure all properties exist
+            appState = {
+                startDate: null,
+                lapses: [],
+                ninetyEightPercentDate: null,
+                ...parsedState
+            };
         } catch (e) {
             console.error('Failed to parse state:', e);
+            // Reset to default state if parsing fails
+            appState = {
+                startDate: null,
+                lapses: [],
+                ninetyEightPercentDate: null
+            };
         }
     }
 }
@@ -97,37 +114,104 @@ function calculateStats() {
     const start = new Date(appState.startDate);
     const today = new Date(todayStr);
     
-    // Calculate total days elapsed (inclusive of start date)
-    // Add timezone offset correction to avoid mid-day issues
-    start.setHours(0,0,0,0);
-    today.setHours(0,0,0,0);
-    const diffTime = Math.abs(today - start);
-    let totalDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    
-    // Number of unique lapses on or after start date and on or before today
-    const validLapses = appState.lapses.filter(l => {
-        const d = new Date(l);
-        d.setHours(0,0,0,0);
-        return d >= start && d <= today;
-    });
-    
-    // Remove duplicates
-    const uniqueLapses = [...new Set(validLapses)];
-    const lapsedDaysCount = uniqueLapses.length;
-    
-    const successfulDaysCount = totalDays - lapsedDaysCount;
-    
-    // Percentage
-    let percentage = 100;
-    if (totalDays > 0) {
-        percentage = (successfulDaysCount / totalDays) * 100;
+    // Validate dates
+    if (!appState.startDate || isNaN(start.getTime()) || isNaN(today.getTime())) {
+        console.error('Invalid dates detected');
+        return {
+            totalDays: 0,
+            successfulDaysCount: 0,
+            percentage: 0,
+            lapsesWithinPeriod: 0
+        };
     }
     
-    return {
+    // Calculate total days elapsed (inclusive of start date)
+    const totalDays = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
+    
+    // Ensure we have valid days
+    if (totalDays <= 0) {
+        return {
+            totalDays: 0,
+            successfulDaysCount: 0,
+            percentage: 0,
+            lapsesWithinPeriod: 0
+        };
+    }
+    
+    // Count lapses within the tracking period
+    const lapsesWithinPeriod = appState.lapses.filter(dateStr => {
+        if (!dateStr) return false;
+        const lapseDate = new Date(dateStr);
+        return !isNaN(lapseDate.getTime()) && lapseDate >= start && lapseDate <= today;
+    });
+    
+    const successfulDaysCount = totalDays - lapsesWithinPeriod.length;
+    const percentage = totalDays > 0 ? (successfulDaysCount / totalDays) * 100 : 0;
+    
+    const result = {
         totalDays,
         successfulDaysCount,
-        percentage
+        percentage,
+        lapsesWithinPeriod: lapsesWithinPeriod.length
     };
+    return result;
+}
+
+function checkStrongRecovery(stats) {
+    // Must have at least 98% overall AND be tracking for 6+ months
+    if (stats.percentage < 98 || stats.totalDays < 180) return false;
+    
+    const today = new Date();
+    const sixMonthsAgo = new Date(today);
+    sixMonthsAgo.setMonth(today.getMonth() - 6);
+    
+    // Check if user has been tracking for at least 6 months
+    const startDate = new Date(appState.startDate);
+    if (startDate > sixMonthsAgo) return false;
+    
+    // Calculate stats for the last 6 months
+    const totalDaysInPeriod = Math.floor((today - sixMonthsAgo) / (1000 * 60 * 60 * 24)) + 1;
+    const lapsesInPeriod = appState.lapses.filter(dateStr => {
+        const lapseDate = new Date(dateStr);
+        return lapseDate >= sixMonthsAgo && lapseDate <= today;
+    }).length;
+    
+    const successfulDaysInPeriod = totalDaysInPeriod - lapsesInPeriod;
+    const percentageInPeriod = (successfulDaysInPeriod / totalDaysInPeriod) * 100;
+    
+    return percentageInPeriod >= 98;
+}
+
+function checkStableRecovery(stats) {
+    // White theme triggers when the overall score (what's shown in the circle)
+    // has been at 98%+ continuously for at least 6 months.
+    // ninetyEightPercentDate holds the date the score reached 98% and stayed there.
+    if (stats.percentage < 98) return false;
+    if (!appState.ninetyEightPercentDate) return false;
+
+    const today = new Date();
+    const sinceDate = new Date(appState.ninetyEightPercentDate);
+    if (isNaN(sinceDate.getTime())) return false;
+
+    const daysSince = Math.floor((today - sinceDate) / (1000 * 60 * 60 * 24));
+    return daysSince >= 180;
+}
+
+function calculateRecoveryDuration() {
+    const today = new Date();
+    const startDate = new Date(appState.startDate);
+    const totalDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    
+    const years = Math.floor(totalDays / 365);
+    const months = Math.floor((totalDays % 365) / 30);
+    const days = totalDays % 30;
+    
+    let duration = '';
+    if (years > 0) duration += `${years} year${years > 1 ? 's' : ''} `;
+    if (months > 0) duration += `${months} month${months > 1 ? 's' : ''} `;
+    if (days > 0 || duration === '') duration += `${days} day${days !== 1 ? 's' : ''}`;
+    
+    return duration.trim();
 }
 
 function getWeeklyTrend() {
@@ -142,121 +226,377 @@ function getWeeklyTrend() {
     const todayHasLapse = appState.lapses.includes(todayStr);
     const yesterdayHasLapse = appState.lapses.includes(yesterdayStr);
     
-    // Day 1 special case: always show trend
+    // Skip if yesterday is before start date
     if (yesterday < new Date(appState.startDate)) {
-        if (todayHasLapse) {
-            return { type: 'declining', color: '#ef4444' };
+        return null;
+    }
+    
+    // Focus on positive momentum rather than pass/fail
+    const currentStreak = calculateCurrentStreak();
+    const daysSinceStart = Math.floor((today - new Date(appState.startDate)) / (1000 * 60 * 60 * 24));
+    
+    // Day 1: always encouraging
+    if (daysSinceStart === 1) {
+        return { type: 'starting', color: '#10b981', text: 'Great start!' };
+    }
+    
+    // Building momentum
+    if (!todayHasLapse && !yesterdayHasLapse) {
+        return { type: 'momentum', color: '#10b981', text: 'Building momentum' };
+    }
+    
+    // Back on track
+    if (!todayHasLapse && yesterdayHasLapse) {
+        return { type: 'recovery', color: '#3b82f6', text: 'Back on track' };
+    }
+    
+    // Learning moment
+    if (todayHasLapse && !yesterdayHasLapse) {
+        return { type: 'learning', color: '#f59e0b', text: 'Keep growing' };
+    }
+    
+    // Need support
+    if (todayHasLapse && yesterdayHasLapse) {
+        return { type: 'support', color: '#ef4444', text: 'Stay strong' };
+    }
+    
+    return { type: 'steady', color: '#10b981', text: 'Keep going' };
+}
+
+function calculateCurrentStreak() {
+    const today = new Date();
+    let streak = 0;
+    
+    // Count backwards from today
+    for (let i = 0; i < 365; i++) {
+        const checkDate = new Date(today);
+        checkDate.setDate(today.getDate() - i);
+        const dateStr = checkDate.toISOString().split('T')[0];
+        
+        if (checkDate < new Date(appState.startDate)) {
+            break;
+        }
+        
+        if (!appState.lapses.includes(dateStr)) {
+            streak++;
         } else {
-            return { type: 'improving', color: '#3b82f6' };
+            break;
         }
     }
     
-    // Determine trend based on today vs yesterday
-    if (!todayHasLapse && yesterdayHasLapse) {
-        // Successful today after lapse yesterday = improving
-        return { type: 'improving', color: '#3b82f6' };
-    } else if (todayHasLapse && !yesterdayHasLapse) {
-        // Lapse today after success yesterday = declining
-        return { type: 'declining', color: '#ef4444' };
-    } else if (!todayHasLapse && !yesterdayHasLapse) {
-        // Success both days = improving
-        return { type: 'improving', color: '#3b82f6' };
-    } else if (todayHasLapse && yesterdayHasLapse) {
-        // Lapse both days = declining
-        return { type: 'declining', color: '#ef4444' };
+    return streak;
+}
+
+function calculateNinetyEightPercentDate() {
+    // Walk forward day-by-day from the start date and find the last day the
+    // cumulative score dipped below 98%. The day after that is when 98%+ was
+    // regained and held continuously. If it never dipped below, the start date is returned.
+    const start = new Date(appState.startDate);
+    const todayStr = getTodayString();
+    const today = new Date(todayStr);
+
+    if (!appState.startDate || isNaN(start.getTime())) return null;
+
+    const lapseSet = new Set(appState.lapses);
+
+    const totalDaysOverall = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
+    if (totalDaysOverall <= 0) return null;
+
+    let lapsesSoFar = 0;
+    let lastDipDate = null;
+
+    for (let i = 0; i < totalDaysOverall; i++) {
+        const checkDate = new Date(start);
+        checkDate.setDate(start.getDate() + i);
+        const checkStr = checkDate.toISOString().split('T')[0];
+
+        if (lapseSet.has(checkStr)) lapsesSoFar++;
+
+        const dayNumber = i + 1;
+        const pct = ((dayNumber - lapsesSoFar) / dayNumber) * 100;
+
+        if (pct < 98) {
+            lastDipDate = new Date(checkDate);
+        }
     }
-    
-    return null;
+
+    if (lastDipDate === null) {
+        // Never dipped below 98% — journey start is when it was first achieved
+        return appState.startDate;
+    }
+
+    // Day after the last dip is when >=98% was regained and held
+    const recoveryDate = new Date(lastDipDate);
+    recoveryDate.setDate(lastDipDate.getDate() + 1);
+    return recoveryDate.toISOString().split('T')[0];
+}
+
+function checkAndUpdateNinetyEightPercentDate(stats) {
+    if (stats.percentage < 98) {
+        if (appState.ninetyEightPercentDate) {
+            appState.ninetyEightPercentDate = null;
+            saveData();
+        }
+        return;
+    }
+
+    // Always recalculate from full history so it's accurate regardless of when
+    // the app was first opened or whether the start date was changed.
+    const correctDate = calculateNinetyEightPercentDate();
+    if (appState.ninetyEightPercentDate !== correctDate) {
+        appState.ninetyEightPercentDate = correctDate;
+        saveData();
+    }
 }
 
 function updateUI() {
-    const stats = calculateStats();
-    const weeklyTrendData = getWeeklyTrend();
-    
-    let mainText = '';
-    let subText = '';
-    let messageText = '';
-    let progressVal = 100;
-    
-    if (stats.totalDays === 1) {
-        // Day 1 special UI
-        mainText = 'Day 1';
-        subText = stats.successfulDaysCount === 1 ? 'So far, so good.' : 'Lapsed today.';
-        progressVal = stats.successfulDaysCount === 1 ? 100 : 0;
-        messageText = 'Every journey begins with a single step.';
-    } else if (stats.totalDays <= 100) {
-        // Up to 100 days
-        mainText = `${stats.successfulDaysCount}/${stats.totalDays}`;
-        subText = 'Days Succeeded';
-        progressVal = stats.percentage;
-        messageText = `Succeeded for <span class="highlight">${stats.successfulDaysCount} out of ${stats.totalDays} days</span> so far. Keep going!`;
-    } else {
-        // Over 100 days
-        mainText = `${Math.round(stats.percentage)}%`;
-        subText = 'Success Rate';
-        progressVal = stats.percentage;
-        messageText = `Succeeded <span class="highlight">${stats.percentage.toFixed(1)}%</span> of the time over ${stats.totalDays} days.`;
-    }
-    
-    mainStat.textContent = mainText;
-    subStat.textContent = subText;
-    statusMessage.innerHTML = messageText;
-    
-    // Update weekly trend display
-    if (weeklyTrend) {
-        if (weeklyTrendData && weeklyTrendData.type) {
-            weeklyTrend.style.display = 'flex';
-            weeklyTrend.className = 'weekly-trend ' + weeklyTrendData.type;
+    console.log('=== UPDATEUI START ===');
+    try {
+        const stats = calculateStats();
+        console.log('Stats:', JSON.stringify(stats));
+        console.log('totalDays value:', stats.totalDays, 'type:', typeof stats.totalDays);
+        console.log('totalDays === 1:', stats.totalDays === 1);
+        
+        const weeklyTrendData = getWeeklyTrend();
+        
+        // Check and update 98% achievement date
+        checkAndUpdateNinetyEightPercentDate(stats);
+        
+        let mainText = '';
+        let subText = '';
+        let messageText = '';
+        let progressVal = 100;
+        
+        if (stats.totalDays === 1) {
+            console.log('>>> ENTERED DAY 1 BRANCH');
+            mainText = 'Day 1';
+            subText = stats.successfulDaysCount === 1 ? 'So far, so good.' : 'Lapsed today.';
+            progressVal = stats.successfulDaysCount === 1 ? 100 : 0;
+            messageText = 'Every journey begins with a single step.';
+        } else {
+            console.log('>>> ENTERED PERCENTAGE BRANCH');
+            mainText = `${Math.round(stats.percentage)}%`;
+            subText = 'Success Rate';
+            progressVal = stats.percentage;
             
-            if (weeklyTrendData.type === 'improving') {
-                trendArrow.textContent = '↑';
-                trendText.textContent = 'Improving';
-            } else if (weeklyTrendData.type === 'stable') {
-                trendArrow.textContent = '→';
-                trendText.textContent = 'Stable';
-            } else if (weeklyTrendData.type === 'declining') {
-                trendArrow.textContent = '↓';
-                trendText.textContent = 'Declining';
+            // Tiered goal logic based on current performance
+            const today = new Date();
+            
+            // Check for stable recovery (6+ months at 98%+)
+            const hasStableRecovery = checkStableRecovery(stats);
+            
+            if (hasStableRecovery) {
+                // Apply bright theme and show stable recovery message
+                applyBrightTheme();
+                
+                mainText = `${Math.round(stats.percentage)}%`;
+                subText = 'Stable Recovery';
+                progressVal = stats.percentage;
+                
+                // Format dates for message
+                const startDate = new Date(appState.startDate);
+                const startDateFormatted = startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                
+                let ninetyEightDateFormatted = '';
+                if (appState.ninetyEightPercentDate) {
+                    const ninetyEightDate = new Date(appState.ninetyEightPercentDate);
+                    ninetyEightDateFormatted = ninetyEightDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                } else {
+                    ninetyEightDateFormatted = startDateFormatted;
+                }
+                
+                // Calculate journey duration
+                const journeyDuration = calculateRecoveryDuration();
+                
+                messageText = `
+                    <div style="text-align: center; padding: 10px;">
+                        <strong style="color: #06b6d4; font-size: 1.2em;">🌟 Stable Recovery Achieved</strong><br><br>
+                        You have maintained a <span style="color: #0891b2; font-weight: 600;">98%+</span> score since <span style="color: #0891b2; font-weight: 600;">${ninetyEightDateFormatted}</span>.<br>
+                        You've been on this journey since <span style="color: #0891b2; font-weight: 600;">${startDateFormatted}</span>.<br>
+                        <span style="color: #0e7490; font-weight: 600;">${journeyDuration}</span> of consistent progress.<br><br>
+                        <span style="color: #155e75; font-style: italic;">Congratulations! Your dedication has created lasting change.</span>
+                    </div>
+                `;
+                
+                // Write to DOM before returning (the lines at the bottom of updateUI
+                // are never reached due to the early return, so we set them here)
+                mainStat.textContent = mainText;
+                subStat.textContent = subText;
+                statusMessage.innerHTML = messageText;
+
+                // Update progress ring to bright cyan-green gradient for stable recovery
+                setTimeout(() => {
+                    setProgress(progressVal);
+                    const ringGrad = document.getElementById('ring-gradient');
+                    const st1 = ringGrad.querySelector('stop:nth-child(1)');
+                    const st2 = ringGrad.querySelector('stop:nth-child(2)');
+                    st1.setAttribute('stop-color', '#06b6d4');
+                    st2.setAttribute('stop-color', '#10b981');
+                }, 50);
+
+                console.log('=== UPDATEUI END (stable recovery) ===');
+                return;
+            } else {
+                // Remove bright theme if not in stable recovery
+                removeBrightTheme();
             }
-        } else {
-            weeklyTrend.style.display = 'none';
+            
+            if (stats.percentage >= 100) {
+                // Perfect record - never lapsed
+                messageText = 'Perfect record! Keep going!';
+            } else if (stats.percentage >= 99) {
+                // 100% is impossible to regain once lost, so no goal needed
+                messageText = 'Keep going!';
+            } else {
+                // Determine target percentage based on current performance
+                let targetPercent;
+                if (stats.percentage >= 98) {
+                    targetPercent = 99;
+                } else if (stats.percentage >= 97) {
+                    targetPercent = 98;
+                } else if (stats.percentage >= 96) {
+                    targetPercent = 97;
+                } else if (stats.percentage >= 95) {
+                    targetPercent = 96;
+                } else if (stats.percentage >= 90) {
+                    targetPercent = 95;
+                } else if (stats.percentage >= 85) {
+                    targetPercent = 90;
+                } else if (stats.percentage >= 80) {
+                    targetPercent = 85;
+                } else if (stats.percentage >= 75) {
+                    targetPercent = 80;
+                } else if (stats.percentage >= 70) {
+                    targetPercent = 75;
+                } else if (stats.percentage >= 65) {
+                    targetPercent = 70;
+                } else if (stats.percentage >= 60) {
+                    targetPercent = 65;
+                } else if (stats.percentage >= 55) {
+                    targetPercent = 60;
+                } else if (stats.percentage >= 50) {
+                    targetPercent = 55;
+                } else if (stats.percentage >= 45) {
+                    targetPercent = 50;
+                } else if (stats.percentage >= 40) {
+                    targetPercent = 45;
+                } else if (stats.percentage >= 35) {
+                    targetPercent = 40;
+                } else if (stats.percentage >= 30) {
+                    targetPercent = 35;
+                } else if (stats.percentage >= 25) {
+                    targetPercent = 30;
+                } else if (stats.percentage >= 20) {
+                    targetPercent = 25;
+                } else if (stats.percentage >= 15) {
+                    targetPercent = 20;
+                } else if (stats.percentage >= 10) {
+                    targetPercent = 15;
+                } else if (stats.percentage >= 5) {
+                    targetPercent = 10;
+                } else {
+                    targetPercent = 5;
+                }
+                
+                // Calculate days needed to reach target percentage
+                // We need: (successful + x) / (total + x) >= targetPercent/100
+                // successful + x >= (targetPercent/100) * (total + x)
+                // successful + x >= (targetPercent/100) * total + (targetPercent/100) * x
+                // x - (targetPercent/100) * x >= (targetPercent/100) * total - successful
+                // x * (1 - targetPercent/100) >= (targetPercent/100) * total - successful
+                // x >= ((targetPercent/100) * total - successful) / (1 - targetPercent/100)
+                
+                const targetDecimal = targetPercent / 100;
+                const neededSuccesses = Math.ceil(((targetDecimal * stats.totalDays) - stats.successfulDaysCount) / (1 - targetDecimal));
+                
+                // Check if user has already lapsed today
+                const todayStr = today.toISOString().split('T')[0];
+                const hasLapsedToday = appState.lapses.includes(todayStr);
+                
+                // For 98%+ users, show when they achieved it (now that neededSuccesses is defined)
+                if (targetPercent === 99 && appState.ninetyEightPercentDate) {
+                    const achievementDate = new Date(appState.ninetyEightPercentDate);
+                    const offsetDate = new Date(achievementDate.getTime() + achievementDate.getTimezoneOffset() * 60000);
+                    const formattedDate = offsetDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                    messageText = `<div style="text-align: center;">🎯 98% achieved on ${formattedDate}. Keep going to reach stable recovery!</div>`;
+                }
+
+                if (neededSuccesses <= 0) {
+                    if (!messageText) {
+                        messageText = 'Keep going!';
+                    }
+                } else {
+                    let baseMessage = `Abstain for <span class="highlight">${neededSuccesses}</span> more days to reach <span class="highlight">${targetPercent}%</span>!`;
+                    
+                    if (!hasLapsedToday) {
+                        // Calculate what happens if they lapse today
+                        const newTotal = stats.totalDays + 1;
+                        const newSuccessful = stats.successfulDaysCount;
+                        const newNeeded = Math.ceil(((targetDecimal * newTotal) - newSuccessful) / (1 - targetDecimal));
+                        const extraDays = newNeeded - neededSuccesses;
+                        
+                        if (extraDays > 0) {
+                            baseMessage += ` Relapsing today would add <span class="highlight">${extraDays}</span> more days to your ${targetPercent}% goal.`;
+                        }
+                    }
+                    
+                    messageText = baseMessage;
+                }
+            }
         }
+        
+        mainStat.textContent = mainText;
+        subStat.textContent = subText;
+        statusMessage.innerHTML = messageText;
+        console.log('Setting mainStat to:', mainText);
+        
+        // Avoid animation glitches by setting timeout minimally
+        setTimeout(() => {
+            setProgress(progressVal);
+            
+            // Change color based on percentage
+            const ringGrad = document.getElementById('ring-gradient');
+            const st1 = ringGrad.querySelector('stop:nth-child(1)');
+            const st2 = ringGrad.querySelector('stop:nth-child(2)');
+            
+            if (progressVal >= 90) {
+                // Electric blue to purple for 90%+
+                st1.setAttribute('stop-color', '#3b82f6');
+                st2.setAttribute('stop-color', '#8b5cf6');
+            } else if (progressVal >= 75) {
+                // Blue to indigo for 75-89%
+                st1.setAttribute('stop-color', '#3b82f6');
+                st2.setAttribute('stop-color', '#6366f1');
+            } else if (progressVal >= 50) {
+                // Cyan to blue for 50-74%
+                st1.setAttribute('stop-color', '#06b6d4');
+                st2.setAttribute('stop-color', '#3b82f6');
+            } else {
+                // Green to cyan for <50%
+                st1.setAttribute('stop-color', '#10b981');
+                st2.setAttribute('stop-color', '#06b6d4');
+            }
+        }, 50);
+        console.log('=== UPDATEUI END ===');
+    } catch (error) {
+        console.error('Error updating UI:', error);
+        console.error('Error stack:', error.stack);
+        // Fallback to basic display
+        mainStat.textContent = '--';
+        subStat.textContent = 'Error';
+        statusMessage.textContent = 'Please refresh the page.';
+        setProgress(0);
     }
-    
-    // Avoid animation glitches by setting timeout minimally
-    setTimeout(() => {
-        setProgress(progressVal);
-        
-        // Change color based on percentage
-        const ringGrad = document.getElementById('ring-gradient');
-        const st1 = ringGrad.querySelector('stop:nth-child(1)');
-        const st2 = ringGrad.querySelector('stop:nth-child(2)');
-        
-        if (progressVal >= 80) {
-            // Blue/Purple gradient
-            st1.setAttribute('stop-color', '#3b82f6');
-            st2.setAttribute('stop-color', '#8b5cf6');
-            progressRingCircle.style.filter = 'url(#glow)';
-        } else if (progressVal >= 50) {
-            // Orange gradient
-            st1.setAttribute('stop-color', '#f59e0b');
-            st2.setAttribute('stop-color', '#ef4444');
-            // Less glow
-            progressRingCircle.style.filter = 'none';
-        } else {
-            // Red gradient
-            st1.setAttribute('stop-color', '#ef4444');
-            st2.setAttribute('stop-color', '#991b1b');
-            progressRingCircle.style.filter = 'none';
-        }
-    }, 50);
 }
 
 // Actions
 function logLapseForToday() {
     const today = getTodayString();
+    if (appState.lapses.includes(today)) {
+        showToast('A lapse is already logged for today.', 3000);
+        return;
+    }
     addLapse(today);
-    showToast('Lapse logged for today.');
 }
 
 function addLapse(dateStr) {
@@ -267,6 +607,12 @@ function addLapse(dateStr) {
         saveData();
         updateUI();
         renderLapsesList();
+
+        // Format date for toast message
+        const dateObj = new Date(dateStr);
+        const offsetDate = new Date(dateObj.getTime() + dateObj.getTimezoneOffset() * 60000);
+        const formatStr = offsetDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        showToast(`Lapse logged for ${formatStr}`);
     }
 }
 
@@ -316,28 +662,19 @@ function bindEvents() {
     settingsBtn.addEventListener('click', () => {
         startDateInput.value = appState.startDate;
         addLapseDateInput.value = getTodayString();
+        
+        // Set min date to start date
+        addLapseDateInput.min = appState.startDate;
+        
+        // Set max date to today
+        addLapseDateInput.max = getTodayString();
+        
         renderLapsesList();
         settingsModal.classList.remove('hidden');
     });
     
     closeSettingsBtn.addEventListener('click', () => {
         settingsModal.classList.add('hidden');
-    });
-    
-    // Resiliency modal events
-    weeklyTrend.addEventListener('click', () => {
-        resiliencyModal.classList.remove('hidden');
-    });
-    
-    closeResiliencyBtn.addEventListener('click', () => {
-        resiliencyModal.classList.add('hidden');
-    });
-    
-    // Close on backdrop click
-    resiliencyModal.addEventListener('click', (e) => {
-        if (e.target === resiliencyModal) {
-            resiliencyModal.classList.add('hidden');
-        }
     });
     
     // Close on backdrop click
@@ -373,7 +710,6 @@ function bindEvents() {
                 showToast("Lapse already exists for this date.", 3000);
             } else {
                 addLapse(val);
-                showToast(`Lapse added for ${val}`);
             }
         }
     });
@@ -392,7 +728,8 @@ function bindEvents() {
         if (verify === 'RESET') {
             appState = {
                 startDate: getTodayString(),
-                lapses: []
+                lapses: [],
+                ninetyEightPercentDate: null
             };
             saveData();
             updateUI();

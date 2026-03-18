@@ -34,11 +34,6 @@
 
         <main>
             <div class="stats-card">
-                <div id="weekly-trend" class="weekly-trend clickable" style="display: none;" title="Click to learn more">
-                    <span class="resiliency-in-pill">Resiliency:</span>
-                    <span id="trend-arrow" class="trend-arrow"></span>
-                    <span id="trend-text" class="trend-text"></span>
-                </div>
                 <div class="progress-ring-container">
                     <svg class="progress-ring" width="280" height="280">
                         <!-- Definitions for gradients -->
@@ -118,40 +113,6 @@
         
         <!-- Toast Notification -->
         <div id="toast" class="toast">Message here</div>
-        
-        <!-- Resiliency Info Modal -->
-        <div id="resiliency-modal" class="modal hidden">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Resiliency Trend</h2>
-                    <button id="close-resiliency-btn" class="icon-btn close-btn" aria-label="Close">
-                        <span class="material-symbols-rounded">close</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <p><strong>What is Resiliency?</strong></p>
-                    <p>Resiliency shows how you're doing today compared to yesterday. It measures your ability to bounce back from setbacks and maintain positive momentum.</p>
-                    
-                    <div class="trend-explanation">
-                        <div class="trend-item">
-                            <span class="trend-arrow" style="color: #3b82f6;">↑</span>
-                            <div>
-                                <strong>Improving</strong>
-                                <p>You succeeded today after a lapse yesterday, or you're maintaining success streaks.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="trend-item">
-                            <span class="trend-arrow" style="color: #ef4444;">↓</span>
-                            <div>
-                                <strong>Declining</strong>
-                                <p>You had a lapse today after success yesterday, or you're in a pattern of lapses.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script src="./app.js"></script>
