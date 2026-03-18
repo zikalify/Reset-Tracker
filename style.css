@@ -119,10 +119,12 @@ h1 {
     font-size: 1.5rem;
     font-weight: 800;
     letter-spacing: -0.5px;
-    background: var(--primary-gradient);
+    background: linear-gradient(90deg, #00cfff, #bf00ff, #00cfff, #bf00ff);
+    background-size: 300% 100%;
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+    animation: gradient-slide 4s linear infinite;
 }
 
 .version-badge {
@@ -276,9 +278,11 @@ main {
 }
 
 .btn-primary {
-    background: var(--primary-gradient);
+    background: linear-gradient(90deg, #00cfff, #bf00ff, #00cfff, #bf00ff);
+    background-size: 300% 100%;
     color: white;
     box-shadow: var(--shadow-glow);
+    animation: gradient-slide 4s linear infinite;
 }
 
 .btn-primary:hover {
@@ -579,4 +583,9 @@ input[type="date"]::-webkit-datetime-edit-year-field {
     50% { transform: scale(1.05) rotate(-1deg); }
     75% { transform: scale(1.02) rotate(1deg); }
     100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes gradient-slide {
+    0% { background-position: 100% 0; }
+    100% { background-position: 0% 0; }
 }
