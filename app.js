@@ -573,7 +573,7 @@ function updateUI() {
             // Check for stable recovery (wave at 100% and above 98%)
             const hasStableRecovery = checkStableRecovery(stats);
             const stableRecoveryProgress = appState.waveProgress;
-            const waveVisible = appState.waveProgress > 0 && !hasStableRecovery;
+            const waveVisible = Boolean(appState.ninetyEightPercentDate) && !hasStableRecovery;
             const isInStableRecoveryProgress = waveVisible && stats.percentage >= 98;
             const waveIncreasing = stats.percentage >= 98;
             
