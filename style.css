@@ -90,6 +90,9 @@ body {
     padding: 0;
     overflow: hidden;
     overscroll-behavior: none;
+    position: fixed;
+    inset: 0;
+    width: 100%;
 }
 
 .material-symbols-rounded {
@@ -101,11 +104,12 @@ body {
 }
 
 .app-container {
+    width: min(100%, 600px);
     max-width: 600px;
     margin: 0 auto;
-    min-height: 100vh;
-    min-height: 100svh;
-    height: 100dvh;
+    min-height: var(--app-height, 100vh);
+    height: var(--app-height, 100vh);
+    max-height: var(--app-height, 100vh);
     display: flex;
     flex-direction: column;
     padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(20px + env(safe-area-inset-bottom, 0px));
