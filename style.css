@@ -73,7 +73,6 @@
 }
 
 html {
-    overflow: hidden;
     height: 100%;
 }
 
@@ -83,13 +82,12 @@ body {
     font-family: var(--font-body);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    overflow: hidden;
-    height: 100vh;
-    height: 100dvh;
-    /* Prevent pull-to-refresh on mobile */
-    overscroll-behavior-y: none;
-    position: fixed;
-    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    /* Use overscroll-behavior to allow PTR but prevent rubber-banding on other elements if needed */
+    overscroll-behavior-y: auto;
+    overflow-y: auto;
 }
 
 .material-symbols-rounded {
@@ -103,10 +101,12 @@ body {
 .app-container {
     max-width: 600px;
     margin: 0 auto;
-    height: 100%;
+    height: 100dvh; /* Use dynamic viewport height for mobile browser chrome */
     display: flex;
     flex-direction: column;
     padding: 20px;
+    box-sizing: border-box;
+    /* Ensure the container itself doesn't cause a scrollbar */
     overflow: hidden;
 }
 
