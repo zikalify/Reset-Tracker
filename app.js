@@ -41,14 +41,6 @@ function setProgress(percent) {
     progressRingCircle.style.strokeDashoffset = offset;
 }
 
-function updateViewportHeight() {
-    const viewportHeight = window.visualViewport
-        ? window.visualViewport.height
-        : window.innerHeight;
-
-    document.documentElement.style.setProperty('--app-height', `${Math.round(viewportHeight)}px`);
-}
-
 // Wave animation state
 let waveAnimationId = null;
 let waveTargetPercent = 0;
@@ -182,7 +174,6 @@ function removeBrightTheme() {
 
 // Logic & Data
 function init() {
-    updateViewportHeight();
     loadData();
     
     // If no start date, set it to today implicitly but prompt user in UI
@@ -920,11 +911,6 @@ function renderLapsesList() {
 
 // Events
 function bindEvents() {
-    window.addEventListener('resize', updateViewportHeight);
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', updateViewportHeight);
-    }
-
     lapseBtn.addEventListener('click', () => {
         if(confirm('Are you sure you want to log a lapse for today?')) {
             logLapseForToday();

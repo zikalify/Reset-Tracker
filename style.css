@@ -74,8 +74,9 @@
 
 html {
     height: 100%;
-    overflow: hidden;
-    overscroll-behavior: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
 }
 
 body {
@@ -88,11 +89,9 @@ body {
     min-height: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
-    overscroll-behavior: none;
-    position: fixed;
-    inset: 0;
-    width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
 }
 
 .material-symbols-rounded {
@@ -107,14 +106,13 @@ body {
     width: min(100%, 600px);
     max-width: 600px;
     margin: 0 auto;
-    min-height: var(--app-height, 100vh);
-    height: var(--app-height, 100vh);
-    max-height: var(--app-height, 100vh);
+    min-height: 100vh;
+    min-height: 100svh;
     display: flex;
     flex-direction: column;
     padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(20px + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
-    overflow: clip;
+    overflow: visible;
 }
 
 /* Header */
