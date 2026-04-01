@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reset-tracker-v32';
+const CACHE_NAME = 'reset-tracker-v33';
 const ASSETS = [
     './',
     './index.html',
@@ -39,19 +39,19 @@ self.addEventListener('fetch', event => {
                 if (cachedResponse) {
                     return cachedResponse;
                 }
-                
+
                 return fetch(event.request).then(response => {
                     // Try to cache new external resources safely
                     if (!response || response.status !== 200 || response.type !== 'basic') {
                         return response;
                     }
-                    
+
                     let responseToCache = response.clone();
                     caches.open(CACHE_NAME)
                         .then(cache => {
                             cache.put(event.request, responseToCache);
                         });
-                        
+
                     return response;
                 }).catch(() => {
                     if (event.request.mode === 'navigate') {
