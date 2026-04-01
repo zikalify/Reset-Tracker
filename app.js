@@ -643,7 +643,7 @@ function updateUI() {
                 const lapsePercentage = Math.floor(((stats.successfulDaysCount - 1) / stats.totalDays) * 100);
                 const todayStrSRP = getTodayString();
                 const hasLapsedTodaySRP = appState.lapses.includes(todayStrSRP);
-                messageText = 'Maintain 98%+ to fill the circle.';
+                messageText = 'Maintain 98%+ to fill the wave.';
                 if (!hasLapsedTodaySRP) {
                     messageText += ` Relapsing today would drop you to <span class="highlight">${lapsePercentage}%</span>.`;
                     // Only show recovery days if lapse would drop below 98%
@@ -653,7 +653,7 @@ function updateUI() {
                         const newTotal = stats.totalDays;
                         const newSuccessful = stats.successfulDaysCount - 1;
                         const daysToRecover = Math.ceil(((targetDecimal * newTotal) - newSuccessful) / (1 - targetDecimal));
-                        messageText += ` It would take <span class="highlight">${daysToRecover}</span> days to recover 98% and start filling the circle again!`;
+                        messageText += ` It would take <span class="highlight">${daysToRecover}</span> days to recover 98% and start filling the wave again!`;
                     }
                 }
 
